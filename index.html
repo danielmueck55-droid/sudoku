@@ -82,21 +82,30 @@
     #introOverlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.65);
+      background: rgba(0,0,0,0.55);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 2000;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
     #introContent {
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.78);
       padding: 24px 32px;
       border-radius: 18px;
       text-align: center;
       color: #fff;
       box-shadow: 0 0 20px rgba(0,0,0,0.6);
       max-width: 90vw;
+      animation: introPop 0.6s ease-out;
+      transform-origin: center;
+    }
+
+    @keyframes introPop {
+      0% { opacity: 0; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
     }
 
     #introDate {
@@ -107,6 +116,36 @@
 
     #introDate span {
       display: inline-block;
+    }
+
+    #introMessage {
+      font-size: 1.1rem;
+      margin-top: 4px;
+      margin-bottom: 12px;
+      opacity: 0.9;
+    }
+
+    .intro-particle {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffd700 0%, #ffb347 40%, rgba(179,0,0,0.9) 100%);
+      box-shadow: 0 0 8px rgba(255,215,0,0.9);
+      pointer-events: none;
+      z-index: 3000;
+      opacity: 1;
+      transition: left 0.9s ease, top 0.9s ease, opacity 0.4s ease-out;
+    }
+
+    .cell-intro-glow {
+      animation: cellIntroGlow 0.6s ease-out;
+    }
+
+    @keyframes cellIntroGlow {
+      0% { box-shadow: 0 0 0 rgba(255,215,0,0); background-color: #fffbe6; }
+      50% { box-shadow: 0 0 12px rgba(255,215,0,0.9); background-color: #fff4c2; }
+      100% { box-shadow: 0 0 0 rgba(255,215,0,0); background-color: inherit; }
     }
 
     #startBtn {
@@ -174,6 +213,10 @@
 
       cursor: pointer;
       user-select: none;
+    }
+
+    .cell.mistake {
+      background: #ffb3b3 !important;
     }
 
     .cell:focus {
@@ -321,6 +364,7 @@
 <div id="introOverlay">
   <div id="introContent">
     <div id="introDate"></div>
+    <div id="introMessage">Viel Spaß beim heutigen Rätsel! 🎄✨</div>
     <button id="startBtn">Start</button>
   </div>
 </div>
@@ -573,21 +617,16 @@ function showMistakes() {
     const r = Math.floor(i / 9);
     const c = i % 9;
     const val = cell.dataset.value;
-    const valueDiv = cell.querySelector(".cell-value");
 
     if (val && Number(val) !== solution[r][c]) {
-      valueDiv.style.color = "red";
+      cell.classList.add("mistake");
     }
   });
 }
 
 function clearMistakes() {
-  const cells = document.querySelectorAll(".cell");
-  cells.forEach(cell => {
-    if (!cell.classList.contains("fixed") && !cell.classList.contains("note")) {
-      const valueDiv = cell.querySelector(".cell-value");
-      valueDiv.style.color = "black";
-    }
+  document.querySelectorAll(".cell.mistake").forEach(cell => {
+    cell.classList.remove("mistake");
   });
 }
 
@@ -638,54 +677,84 @@ startBtn.addEventListener("click", () => {
   startBtn.disabled = true;
 
   const cells = document.querySelectorAll(".cell");
-  const clones = [];
+  const particles = [];
 
+  // create spark particles that fly into the target cells
   introMappings.forEach((map, idx) => {
     const digitSpan = introDigits[idx];
     if (!digitSpan) return;
 
     const rect = digitSpan.getBoundingClientRect();
-    const clone = digitSpan.cloneNode(true);
-    clone.style.position = "fixed";
-    clone.style.left = rect.left + "px";
-    clone.style.top = rect.top + "px";
-    clone.style.zIndex = "3000";
-    clone.style.transition = "left 0.9s ease, top 0.9s ease, opacity 0.9s ease";
-    document.body.appendChild(clone);
-    digitSpan.style.opacity = "0";
+    const particle = document.createElement("div");
+    particle.className = "intro-particle";
+
+    const startLeft = rect.left + rect.width / 2;
+    const startTop = rect.top + rect.height / 2;
+
+    particle.style.left = startLeft + "px";
+    particle.style.top = startTop + "px";
+
+    document.body.appendChild(particle);
 
     const cell = cells[map.row * 9 + map.col];
     const cellRect = cell.getBoundingClientRect();
-    const targetLeft = cellRect.left + cellRect.width/2 - rect.width/2;
-    const targetTop  = cellRect.top + cellRect.height/2 - rect.height/2;
+    const targetLeft = cellRect.left + cellRect.width / 2;
+    const targetTop  = cellRect.top + cellRect.height / 2;
 
-    requestAnimationFrame(() => {
-      clone.style.left = targetLeft + "px";
-      clone.style.top  = targetTop + "px";
-    });
+    const flightDelay = idx * 80;
 
-    clones.push({ clone, map });
+    setTimeout(() => {
+      particle.style.left = targetLeft + "px";
+      particle.style.top  = targetTop + "px";
+    }, flightDelay);
+
+    particles.push({ particle, map, delay: flightDelay });
   });
 
-  // Fade out overlay while digits fly
+  // Fade out overlay while particles fly
   introOverlay.style.transition = "opacity 0.9s ease";
   introOverlay.style.opacity = "0";
 
+  const baseTime = 900;
+  const maxDelay = particles.length
+    ? particles.reduce((max, p) => Math.max(max, p.delay), 0)
+    : 0;
+
+  // After the particles have arrived, reveal the digits with a stagger + glow
   setTimeout(() => {
-    // Apply digits as fixed cells
-    const cells = document.querySelectorAll(".cell");
-    clones.forEach(({ clone, map }) => {
-      const cell = cells[map.row * 9 + map.col];
+    const currentCells = document.querySelectorAll(".cell");
+    particles.forEach(({ particle, map }, idx) => {
+      const cell = currentCells[map.row * 9 + map.col];
       const valueDiv = cell.querySelector(".cell-value");
-      cell.dataset.value = map.char;
-      valueDiv.textContent = map.char;
-      cell.classList.add("fixed");
-      document.body.removeChild(clone);
+      const revealDelay = idx * 80;
+
+      setTimeout(() => {
+        cell.dataset.value = map.char;
+        valueDiv.textContent = map.char;
+        cell.classList.add("fixed", "cell-intro-glow");
+
+        // fade out particle
+        particle.style.opacity = "0";
+
+        // remove glow class after animation
+        setTimeout(() => {
+          cell.classList.remove("cell-intro-glow");
+        }, 700);
+      }, revealDelay);
     });
+
+    // remove particles after they faded out
+    setTimeout(() => {
+      particles.forEach(({ particle }) => {
+        if (particle.parentNode) {
+          particle.parentNode.removeChild(particle);
+        }
+      });
+    }, particles.length * 80 + 800);
 
     introOverlay.style.display = "none";
     gameStarted = true;
-  }, 950);
+  }, maxDelay + baseTime);
 });
 </script>
 
