@@ -8,6 +8,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 
   <style>
+    :root {
+      /* base = desktop look */
+      --scale: 1;
+      --frame-width: calc(400px * var(--scale));
+      --cell-size: calc(40px * var(--scale));
+      --gap-size: calc(2px * var(--scale));
+      --border-thick: calc(3px * var(--scale));
+      --cell-font: calc(20px * var(--scale));
+      --num-font: calc(20px * var(--scale));
+      --btn-font: calc(17px * var(--scale));
+    }
+
+    /* Slightly smaller on typical phones */
+    @media (max-width: 480px) {
+      :root {
+        --scale: 0.85;
+      }
+    }
+
+    /* Even smaller on very narrow phones */
+    @media (max-width: 380px) {
+      :root {
+        --scale: 0.75;
+      }
+    }
+
     body {
       font-family: system-ui, sans-serif;
       display: flex;
@@ -21,14 +47,6 @@
       url('data:image/svg+xml,%3Csvg width="120" height="120" xmlns="http://www.w3.org/2000/svg"%3E%3Ctext x="15" y="65" font-size="22" fill="%23f2d4d4"%3E✦%3C/text%3E%3C/svg%3E');
       background-repeat: repeat;
       overflow-x: hidden;
-    }
-
-    /* 🎯 NEW: Perfect scaling wrapper */
-    #scaleWrapper {
-      transform-origin: top center;
-      width: 100%;
-      display: flex;
-      justify-content: center;
     }
 
     h1, h2 {
@@ -61,29 +79,31 @@
       box-shadow: 0 0 15px rgba(0,0,0,0.2);
       margin-top: 25px;
 
-      /* Desktop width preserved */
-      width: 430px;
+      width: var(--frame-width);
+      box-sizing: content-box;
     }
 
     #sudoku {
       display: grid;
-      grid-template-columns: repeat(9, 40px);
-      grid-template-rows: repeat(9, 40px);
-      gap: 2px;
+      grid-template-columns: repeat(9, var(--cell-size));
+      grid-template-rows: repeat(9, var(--cell-size));
+      gap: var(--gap-size);
+      margin: 0 auto;
     }
 
     .cell {
-      width: 40px;
-      height: 40px;
+      width: var(--cell-size);
+      height: var(--cell-size);
       background: white;
       border: 1px solid #ddd;
       text-align: center;
-      font-size: 20px;
+      font-size: var(--cell-font);
       border-radius: 6px;
 
       caret-color: transparent;
       cursor: pointer;
       user-select: none;
+      box-sizing: border-box;
     }
 
     .cell:focus {
@@ -91,10 +111,10 @@
       background: #fff5f5;
     }
 
-    .block-left  { border-left: 3px solid #b30000; }
-    .block-right { border-right: 3px solid #b30000; }
-    .block-top   { border-top: 3px solid #b30000; }
-    .block-bottom{ border-bottom: 3px solid #b30000; }
+    .block-left  { border-left: var(--border-thick) solid #b30000; }
+    .block-right { border-right: var(--border-thick) solid #b30000; }
+    .block-top   { border-top: var(--border-thick) solid #b30000; }
+    .block-bottom{ border-bottom: var(--border-thick) solid #b30000; }
 
     #mistakeBtn {
       margin-top: 18px;
@@ -104,27 +124,28 @@
       background: #b30000;
       color: white;
       cursor: pointer;
-      font-size: 17px;
+      font-size: var(--btn-font);
     }
 
     #numberPad {
       margin-top: 15px;
       display: grid;
-      grid-template-columns: repeat(5, 40px);
-      grid-auto-rows: 40px;
+      grid-template-columns: repeat(5, var(--cell-size));
+      grid-auto-rows: var(--cell-size);
       justify-content: center;
       gap: 8px;
     }
 
     .numBtn {
-      width: 40px;
-      height: 40px;
+      width: var(--cell-size);
+      height: var(--cell-size);
       border-radius: 8px;
       border: none;
       background: #fff;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
-      font-size: 20px;
+      font-size: var(--num-font);
       cursor: pointer;
+      box-sizing: border-box;
     }
 
     #notesToggle {
@@ -181,18 +202,16 @@
 <h1>Feloke Adventskalender</h1>
 <h2>Türchen 1 🎄🎁</h2>
 
-<div id="scaleWrapper">
-  <div id="frame">
-    <div id="sudoku"></div>
+<div id="frame">
+  <div id="sudoku"></div>
 
-    <div id="notesToggle">
-      <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
-    </div>
-
-    <div id="numberPad"></div>
-
-    <button id="mistakeBtn">Fehler hervorheben</button>
+  <div id="notesToggle">
+    <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
   </div>
+
+  <div id="numberPad"></div>
+
+  <button id="mistakeBtn">Fehler hervorheben</button>
 </div>
 
 <div id="winMessage">
@@ -214,21 +233,6 @@ for (let i = 0; i < 20; i++) {
 
 const sudokuEl = document.getElementById("sudoku");
 let selectedCell = null;
-
-/* Perfect scaling for all mobile screens */
-function scaleToFit() {
-  const designWidth = 430; // your original frame width
-  const available = window.innerWidth;
-
-  let scale = available / designWidth;
-
-  if (scale > 1) scale = 1; // prevent upscaling on desktop
-
-  document.getElementById("scaleWrapper").style.transform = 
-    `scale(${scale})`;
-}
-scaleToFit();
-window.addEventListener("resize", scaleToFit);
 
 /* ORIGINAL PUZZLE */
 const puzzle = [
@@ -340,6 +344,7 @@ function handleInput(value) {
     selectedCell.style.color = "black";
   }
 
+  /* AUTO WIN CHECK */
   const cells = Array.from(document.querySelectorAll(".cell"));
   const grid = [];
 
@@ -355,7 +360,7 @@ function handleInput(value) {
   if (isSolved(grid)) onWin();
 }
 
-/* ------- NEW MISTAKE BUTTON (press & hold) -------- */
+/* ------- MISTAKE BUTTON (press & hold) -------- */
 const mistakeBtn = document.getElementById("mistakeBtn");
 
 function highlightMistakes() {
@@ -390,10 +395,12 @@ function clearMistakeHighlight() {
   });
 }
 
+/* Desktop */
 mistakeBtn.addEventListener("mousedown", highlightMistakes);
 mistakeBtn.addEventListener("mouseup", clearMistakeHighlight);
 mistakeBtn.addEventListener("mouseleave", clearMistakeHighlight);
 
+/* Mobile */
 mistakeBtn.addEventListener("touchstart", (e) => {
   e.preventDefault();
   highlightMistakes();
