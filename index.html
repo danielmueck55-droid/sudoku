@@ -121,38 +121,15 @@
     #introMessage {
       font-size: 1.1rem;
       margin-top: 4px;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       opacity: 0.9;
     }
 
     #introMessage2 {
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       opacity: 0.85;
       margin-bottom: 14px;
       font-style: italic;
-    }
-
-    .intro-particle {
-      position: fixed;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #ffd700 0%, #ffb347 40%, rgba(179,0,0,0.9) 100%);
-      box-shadow: 0 0 8px rgba(255,215,0,0.9);
-      pointer-events: none;
-      z-index: 3000;
-      opacity: 1;
-      transition: left 0.9s ease, top 0.9s ease, opacity 0.4s ease-out;
-    }
-
-    .cell-intro-glow {
-      animation: cellIntroGlow 0.6s ease-out;
-    }
-
-    @keyframes cellIntroGlow {
-      0% { box-shadow: 0 0 0 rgba(255,215,0,0); background-color: #fffbe6; }
-      50% { box-shadow: 0 0 12px rgba(255,215,0,0.9); background-color: #fff4c2; }
-      100% { box-shadow: 0 0 0 rgba(255,215,0,0); background-color: inherit; }
     }
 
     #startBtn {
@@ -265,11 +242,13 @@
 
     .fixed {
       background: #f7eaea !important;
+      font-weight: normal !important;
     }
 
     @media (max-width: 600px) {
       .fixed {
         background: #e9c8c8 !important;
+        font-weight: normal !important;
       }
       .cell-value {
         color: #222 !important;
@@ -294,6 +273,7 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
       font-size: calc(var(--font-base) * var(--scale));
       cursor: pointer;
+      box-sizing: border-box;
       color: #0a7a0a !important;
     }
 
@@ -316,18 +296,28 @@
     }
 
     /* -------------------------
-       ORIGINAL WIN MESSAGE
-       (still used for fade-up)
+       WIN OVERLAY + MESSAGE
     -------------------------- */
+    #winOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      z-index: 3000;
+    }
+
     #winMessage {
-      margin-top: 18px;
       background: rgba(255,255,255,0.94);
       padding: 14px 20px;
       border-radius: 12px;
       font-size: 17px;
       box-shadow: 0 0 12px rgba(0,0,0,0.25);
       opacity: 0;
-      display: none;
       text-align: center;
       max-width: 92vw;
       transform: translateY(18px);
@@ -345,92 +335,54 @@
     }
 
     /* -------------------------
-       ADDED: Overlay for Congrats
+       Confetti fade-out animation (for canvas)
     -------------------------- */
-    #winOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.6s ease;
-      z-index: 5000;
+    @keyframes confettiFadeOut {
+      from { opacity: 1; }
+      to   { opacity: 0; }
     }
-
-    #winMessageOverlay {
-      background: rgba(255,255,255,0.96);
-      padding: 20px 30px;
-      border-radius: 14px;
-      text-align: center;
-      max-width: 85vw;
-      box-shadow: 0 0 12px rgba(0,0,0,0.25);
-    }
-
-    /* -------------------------
-       Confetti
-    -------------------------- */
-    .confetti {
-      position: fixed;
-      width: 10px;
-      height: 14px;
-      top: -20px;
-      background: red;
-      opacity: 0.9;
-      z-index: 6000;
-      animation: confettiFall 2s linear forwards;
-    }
-
-    @keyframes confettiFall {
-      0% { transform: translateY(0) rotate(0deg); }
-      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-    }
-
   </style>
 </head>
 
 <body>
 
-<h1>Felice Adventskalender</h1>
-<h2>Türchen 2 🎄🎁</h2>
+  <!-- Confetti canvas from puzzle 4 -->
+  <canvas id="confettiCanvas"
+          style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                 pointer-events: none; z-index: 999999; display: none;"></canvas>
 
-<!-- INTRO OVERLAY -->
-<div id="introOverlay">
-  <div id="introContent">
-    <div id="introDate"></div>
-    <div id="introMessage">Viel Spaß beim heutigen Rätsel! 🎄✨</div>
-	<div id="introMessage2">(weißt ... wegen GEBURTSTAGsgeschenk)</div>
-    <button id="startBtn">Start</button>
-  </div>
-</div>
+  <h1>Felice Adventskalender</h1>
+  <h2>Türchen 2 🎄🎁</h2>
 
-<div id="frame">
-  <div id="sudoku"></div>
-
-  <div id="notesToggle">
-    <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
+  <!-- INTRO OVERLAY -->
+  <div id="introOverlay">
+    <div id="introContent">
+      <div id="introDate"></div>
+      <div id="introMessage">Viel Spaß beim heutigen Rätsel! 🎄✨</div>
+      <div id="introMessage2">(weißt ... wegen GEBURTSTAGsgeschenk)</div>
+      <button id="startBtn">Start</button>
+    </div>
   </div>
 
-  <div id="numberPad"></div>
+  <div id="frame">
+    <div id="sudoku"></div>
 
-  <button id="mistakeBtn">Fehler hervorheben</button>
-</div>
+    <div id="notesToggle">
+      <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
+    </div>
 
-<!-- ORIGINAL MESSAGE (still used) -->
-<div id="winMessage">
-  <h2>Geschafft!</h2>
-  <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
-</div>
+    <div id="numberPad"></div>
 
-<!-- OVERLAY ADDED -->
-<div id="winOverlay">
-  <div id="winMessageOverlay">
-    <h2>Geschafft! 🎉</h2>
-    <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
+    <button id="mistakeBtn">Fehler hervorheben</button>
   </div>
-</div>
+
+  <!-- WIN OVERLAY OVER THE SUDOKU -->
+  <div id="winOverlay">
+    <div id="winMessage">
+      <h2>Geschafft!</h2>
+      <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
+    </div>
+  </div>
 
 <script>
 /* -------------------------
@@ -454,7 +406,7 @@ const startBtn = document.getElementById("startBtn");
 const introOverlay = document.getElementById("introOverlay");
 const dateStr = "22.11.1998";
 
-const introDigits = [];
+const introDigits = []; // only digit spans, in order
 for (const ch of dateStr) {
   const span = document.createElement("span");
   if (/\d/.test(ch)) {
@@ -469,6 +421,7 @@ for (const ch of dateStr) {
 
 /* -------------------------
    PUZZLE + SOLUTION
+   (with intro cells initially empty)
 -------------------------- */
 const puzzle = [
   [5,3,0,0,7,0,0,0,0],
@@ -494,20 +447,18 @@ const solution = [
   [3,4,5,2,8,6,1,7,9],
 ];
 
+/* Mapping of digits from date to cell positions (0-based) */
 const introMappings = [
-  { char: '2', row: 5, col: 4 },
-  { char: '2', row: 6, col: 6 },
-  { char: '1', row: 1, col: 3 },
-  { char: '1', row: 4, col: 8 },
-  { char: '1', row: 7, col: 4 },
-  { char: '9', row: 7, col: 5 },
-  { char: '9', row: 8, col: 8 },
-  { char: '8', row: 6, col: 7 },
+  { char: '2', row: 5, col: 4 }, // (6,5)
+  { char: '2', row: 6, col: 6 }, // (7,7)
+  { char: '1', row: 1, col: 3 }, // (2,4)
+  { char: '1', row: 4, col: 8 }, // (5,9)
+  { char: '1', row: 7, col: 4 }, // (8,5)
+  { char: '9', row: 7, col: 5 }, // (8,6)
+  { char: '9', row: 8, col: 8 }, // (9,9)
+  { char: '8', row: 6, col: 7 }, // (7,8)
 ];
 
-/* -------------------------
-   RENDER SUDOKU
--------------------------- */
 const sudoku = document.getElementById("sudoku");
 let selectedCell = null;
 let gameStarted = false;
@@ -566,6 +517,7 @@ function renderSudoku() {
         cell.dataset.value = "";
       }
 
+      // 3x3 block borders
       if (c % 3 === 0) cell.classList.add("block-left");
       if (c === 8)     cell.classList.add("block-right");
       if (r % 3 === 0) cell.classList.add("block-top");
@@ -574,13 +526,13 @@ function renderSudoku() {
       cell.appendChild(valueDiv);
       cell.appendChild(notesDiv);
 
-      cell.onclick = () => {
+      cell.addEventListener("click", () => {
         if (!gameStarted) return;
         if (cell.classList.contains("fixed")) return;
         if (selectedCell) selectedCell.style.outline = "none";
         selectedCell = cell;
         cell.style.outline = "2px solid #b30000";
-      };
+      });
 
       sudoku.appendChild(cell);
     }
@@ -590,11 +542,9 @@ function renderSudoku() {
 renderSudoku();
 
 /* -------------------------
-   NUMBER INPUT
+   NUMBER PAD
 -------------------------- */
 const numberPad = document.getElementById("numberPad");
-const notesMode = document.getElementById("notesMode");
-
 for (let n = 1; n <= 9; n++) {
   const btn = document.createElement("button");
   btn.className = "numBtn";
@@ -608,6 +558,8 @@ del.textContent = "⌫";
 del.onclick = () => handleInput(0);
 numberPad.appendChild(del);
 
+const notesMode = document.getElementById("notesMode");
+
 function handleInput(value) {
   if (!gameStarted) return;
   if (!selectedCell || selectedCell.classList.contains("fixed")) return;
@@ -615,20 +567,24 @@ function handleInput(value) {
   const valueDiv = selectedCell.querySelector(".cell-value");
 
   if (notesMode.checked) {
+    // Notes mode
     if (!selectedCell.notes) selectedCell.notes = new Set();
 
-    if (value === 0) selectedCell.notes.clear();
-    else {
+    if (value === 0) {
+      selectedCell.notes.clear();
+    } else {
       if (selectedCell.notes.has(value)) selectedCell.notes.delete(value);
       else selectedCell.notes.add(value);
     }
 
+    // In notes mode, clear main value
     selectedCell.dataset.value = "";
     valueDiv.textContent = "";
     selectedCell.classList.add("note");
     updateNotesVisual(selectedCell);
 
   } else {
+    // Normal number entry
     selectedCell.classList.remove("note");
     clearNotes(selectedCell);
 
@@ -649,6 +605,7 @@ function handleInput(value) {
    FEHLER HERVORHEBEN
 -------------------------- */
 const mistakeBtn = document.getElementById("mistakeBtn");
+let mistakeTimeout = null;
 
 function showMistakes() {
   const cells = document.querySelectorAll(".cell");
@@ -670,33 +627,100 @@ function clearMistakes() {
   });
 }
 
-mistakeBtn.onclick = () => {
+mistakeBtn.addEventListener("click", () => {
   if (!gameStarted) return;
-  clearMistakes();
+  if (mistakeTimeout) {
+    clearTimeout(mistakeTimeout);
+    clearMistakes();
+    mistakeTimeout = null;
+  }
   showMistakes();
-  setTimeout(clearMistakes, 1000);
-};
+  mistakeTimeout = setTimeout(() => {
+    clearMistakes();
+    mistakeTimeout = null;
+  }, 1000);
+});
 
 /* -------------------------
-   CONFETTI (NEW)
+   CONFETTI ENGINE (from puzzle 4)
 -------------------------- */
-function launchConfetti() {
-  const colors = ["#ff4d4d", "#ffcc00", "#33cc33", "#3399ff", "#ff66cc"];
+const confettiCanvas = document.getElementById("confettiCanvas");
+const ctx = confettiCanvas.getContext("2d");
+let confettiPieces = [];
+let confettiActive = false;
 
-  for (let i = 0; i < 80; i++) {
-    const conf = document.createElement("div");
-    conf.className = "confetti";
-    conf.style.left = Math.random() * 100 + "vw";
-    conf.style.background = colors[Math.floor(Math.random() * colors.length)];
-    conf.style.animationDelay = (Math.random() * 0.4) + "s";
-    document.body.appendChild(conf);
+function resizeCanvas() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
 
-    setTimeout(() => conf.remove(), 2200);
+function startConfetti() {
+  confettiActive = true;
+  confettiCanvas.style.display = "block";
+  confettiCanvas.style.opacity = "1";
+  resizeCanvas();
+  createConfetti();
+  requestAnimationFrame(updateConfetti);
+
+  // start fade-out after ~2s
+  setTimeout(() => fadeOutConfetti(), 2000);
+}
+
+function fadeOutConfetti() {
+  confettiCanvas.style.animation = "confettiFadeOut 2.5s forwards";
+  setTimeout(() => {
+    stopConfetti();
+    confettiCanvas.style.animation = "";
+  }, 2100);
+}
+
+function stopConfetti() {
+  confettiActive = false;
+  confettiPieces = [];
+  confettiCanvas.style.display = "none";
+}
+
+function createConfetti() {
+  const colors = ["#b30000", "#d4af37", "#ffffff", "#008000"]; // same as puzzle
+
+  for (let i = 0; i < 260; i++) {
+    confettiPieces.push({
+      x: Math.random() * confettiCanvas.width,
+      y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+      size: Math.random() * 7 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      speed: Math.random() * 3 + 1.5,
+      angle: Math.random() * Math.PI * 2,
+      spin: Math.random() * 0.12 - 0.06
+    });
   }
 }
 
+function updateConfetti() {
+  if (!confettiActive) return;
+
+  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+  confettiPieces.forEach(p => {
+    p.y += p.speed;
+    p.angle += p.spin;
+
+    ctx.fillStyle = p.color;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+    ctx.restore();
+  });
+
+  confettiPieces = confettiPieces.filter(p => p.y < confettiCanvas.height);
+
+  requestAnimationFrame(updateConfetti);
+}
+
 /* -------------------------
-   WIN LOGIC
+   WIN DETECTION
 -------------------------- */
 function checkWin() {
   const cells = document.querySelectorAll(".cell");
@@ -712,102 +736,85 @@ function checkWin() {
 }
 
 function onWin() {
-
-  // original fade-up message under Sudoku
+  const overlay = document.getElementById("winOverlay");
   const msg = document.getElementById("winMessage");
-  msg.style.display = "block";
+
+  overlay.style.pointerEvents = "auto";
+  overlay.style.opacity = "1";
+
   setTimeout(() => {
     msg.style.opacity = "1";
     msg.style.transform = "translateY(0)";
   }, 20);
 
-  // NEW overlay
-  const overlay = document.getElementById("winOverlay");
-  overlay.style.pointerEvents = "auto";
-  overlay.style.opacity = "1";
+  startConfetti();
 
-  // Confetti
-  launchConfetti();
-
-  // Hide overlay after confetti finishes
+  // keep congrats open for 5 seconds, then fade overlay away
   setTimeout(() => {
+    msg.style.opacity = "0";
+    msg.style.transform = "translateY(18px)";
     overlay.style.opacity = "0";
     overlay.style.pointerEvents = "none";
-  }, 2100);
+  }, 5000);
 }
 
 /* -------------------------
-   INTRO ANIMATION (unchanged)
+   INTRO ANIMATION (from sudoku 10)
 -------------------------- */
-startBtn.onclick = () => {
+startBtn.addEventListener("click", () => {
+  // prevent double start
   startBtn.disabled = true;
 
   const cells = document.querySelectorAll(".cell");
-  const particles = [];
+  const clones = [];
 
   introMappings.forEach((map, idx) => {
     const digitSpan = introDigits[idx];
     if (!digitSpan) return;
 
     const rect = digitSpan.getBoundingClientRect();
-    const particle = document.createElement("div");
-    particle.className = "intro-particle";
-
-    const startLeft = rect.left + rect.width / 2;
-    const startTop = rect.top + rect.height / 2;
-
-    particle.style.left = startLeft + "px";
-    particle.style.top = startTop + "px";
-
-    document.body.appendChild(particle);
+    const clone = digitSpan.cloneNode(true);
+    clone.style.position = "fixed";
+    clone.style.left = rect.left + "px";
+    clone.style.top = rect.top + "px";
+    clone.style.zIndex = "3000";
+    clone.style.transition = "left 0.9s ease, top 0.9s ease, opacity 0.9s ease";
+    document.body.appendChild(clone);
+    digitSpan.style.opacity = "0";
 
     const cell = cells[map.row * 9 + map.col];
     const cellRect = cell.getBoundingClientRect();
-    const targetLeft = cellRect.left + cellRect.width / 2;
-    const targetTop  = cellRect.top + cellRect.height / 2;
+    const targetLeft = cellRect.left + cellRect.width/2 - rect.width/2;
+    const targetTop  = cellRect.top + cellRect.height/2 - rect.height/2;
 
-    const delay = idx * 80;
+    requestAnimationFrame(() => {
+      clone.style.left = targetLeft + "px";
+      clone.style.top  = targetTop + "px";
+    });
 
-    setTimeout(() => {
-      particle.style.left = targetLeft + "px";
-      particle.style.top  = targetTop + "px";
-    }, delay);
-
-    particles.push({ particle, map, delay });
+    clones.push({ clone, map });
   });
 
+  // Fade out overlay while digits fly
   introOverlay.style.transition = "opacity 0.9s ease";
   introOverlay.style.opacity = "0";
 
-  const maxDelay = particles.reduce((m, p) => Math.max(m, p.delay), 0);
-
   setTimeout(() => {
-    const cells = document.querySelectorAll(".cell");
-
-    particles.forEach(({ particle, map }, idx) => {
-      const cell = cells[map.row * 9 + map.col];
+    // Apply digits as fixed cells
+    const cellsNow = document.querySelectorAll(".cell");
+    clones.forEach(({ clone, map }) => {
+      const cell = cellsNow[map.row * 9 + map.col];
       const valueDiv = cell.querySelector(".cell-value");
-
-      setTimeout(() => {
-        cell.dataset.value = map.char;
-        valueDiv.textContent = map.char;
-        cell.classList.add("fixed", "cell-intro-glow");
-
-        particle.style.opacity = "0";
-
-        setTimeout(() => cell.classList.remove("cell-intro-glow"), 700);
-
-      }, idx * 80);
+      cell.dataset.value = map.char;
+      valueDiv.textContent = map.char;
+      cell.classList.add("fixed");
+      document.body.removeChild(clone);
     });
-
-    setTimeout(() => {
-      particles.forEach(({ particle }) => particle.remove());
-    }, particles.length * 80 + 800);
 
     introOverlay.style.display = "none";
     gameStarted = true;
-  }, maxDelay + 900);
-};
+  }, 950);
+});
 </script>
 
 </body>
