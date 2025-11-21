@@ -121,8 +121,15 @@
     #introMessage {
       font-size: 1.1rem;
       margin-top: 4px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       opacity: 0.9;
+    }
+
+    #introMessage2 {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-bottom: 14px;
+      font-style: italic;
     }
 
     .intro-particle {
@@ -179,7 +186,7 @@
 
       display: flex;
       flex-direction: column;
-      align-items: center; /* center sudoku & controls */
+      align-items: center;
     }
 
     /* -------------------------
@@ -192,7 +199,7 @@
       display: grid;
       grid-template-columns: repeat(9, var(--cell-size));
       grid-template-rows: repeat(9, var(--cell-size));
-      gap: 0; /* cells touch */
+      gap: 0;
 
       margin: 0 auto;
     }
@@ -203,7 +210,7 @@
 
       background: white;
       border: 1px solid #ddd;
-      border-radius: 4px;  /* reduced rounding */
+      border-radius: 4px;
       box-sizing: border-box;
 
       position: relative;
@@ -236,7 +243,6 @@
       color: black;
     }
 
-    /* 3x3 mini note grid */
     .cell-notes {
       position: absolute;
       inset: 2px;
@@ -257,27 +263,19 @@
       opacity: 0;
     }
 
-    /* -------------------------
-       FIXED CELLS (GIVEN NUMBERS)
-    -------------------------- */
     .fixed {
       background: #f7eaea !important;
-      font-weight: normal !important; /* no bold */
     }
 
     @media (max-width: 600px) {
       .fixed {
-        background: #e9c8c8 !important; /* a bit darker on mobile */
-        font-weight: normal !important;
+        background: #e9c8c8 !important;
       }
       .cell-value {
         color: #222 !important;
       }
     }
 
-    /* -------------------------
-       NUMBER PAD
-    -------------------------- */
     #numberPad {
       margin-top: 15px;
       display: grid;
@@ -296,22 +294,14 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
       font-size: calc(var(--font-base) * var(--scale));
       cursor: pointer;
-      box-sizing: border-box;
-      color: #0a7a0a !important; /* Christmassy green */
+      color: #0a7a0a !important;
     }
 
-    /* -------------------------
-       CONTROLS
-    -------------------------- */
     #notesToggle {
       margin-top: 12px;
       font-size: 16px;
       cursor: pointer;
       text-align: center;
-    }
-
-    .note {
-      /* marker class; visual handled by note grid */
     }
 
     #mistakeBtn {
@@ -326,7 +316,8 @@
     }
 
     /* -------------------------
-       WIN MESSAGE
+       ORIGINAL WIN MESSAGE
+       (still used for fade-up)
     -------------------------- */
     #winMessage {
       margin-top: 18px;
@@ -352,6 +343,51 @@
       color: transparent;
       text-shadow: 0 0 7px rgba(255,255,255,0.7);
     }
+
+    /* -------------------------
+       ADDED: Overlay for Congrats
+    -------------------------- */
+    #winOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      z-index: 5000;
+    }
+
+    #winMessageOverlay {
+      background: rgba(255,255,255,0.96);
+      padding: 20px 30px;
+      border-radius: 14px;
+      text-align: center;
+      max-width: 85vw;
+      box-shadow: 0 0 12px rgba(0,0,0,0.25);
+    }
+
+    /* -------------------------
+       Confetti
+    -------------------------- */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 14px;
+      top: -20px;
+      background: red;
+      opacity: 0.9;
+      z-index: 6000;
+      animation: confettiFall 2s linear forwards;
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(0) rotate(0deg); }
+      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+
   </style>
 </head>
 
@@ -365,6 +401,7 @@
   <div id="introContent">
     <div id="introDate"></div>
     <div id="introMessage">Viel Spaß beim heutigen Rätsel! 🎄✨</div>
+	<div id="introMessage2">(weißt ... wegen GEBURTSTAGsgeschenk)</div>
     <button id="startBtn">Start</button>
   </div>
 </div>
@@ -381,9 +418,18 @@
   <button id="mistakeBtn">Fehler hervorheben</button>
 </div>
 
+<!-- ORIGINAL MESSAGE (still used) -->
 <div id="winMessage">
   <h2>Geschafft!</h2>
   <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
+</div>
+
+<!-- OVERLAY ADDED -->
+<div id="winOverlay">
+  <div id="winMessageOverlay">
+    <h2>Geschafft! 🎉</h2>
+    <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
+  </div>
 </div>
 
 <script>
@@ -408,7 +454,7 @@ const startBtn = document.getElementById("startBtn");
 const introOverlay = document.getElementById("introOverlay");
 const dateStr = "22.11.1998";
 
-const introDigits = []; // only digit spans, in order
+const introDigits = [];
 for (const ch of dateStr) {
   const span = document.createElement("span");
   if (/\d/.test(ch)) {
@@ -423,18 +469,17 @@ for (const ch of dateStr) {
 
 /* -------------------------
    PUZZLE + SOLUTION
-   (with intro cells initially empty)
 -------------------------- */
 const puzzle = [
   [5,3,0,0,7,0,0,0,0],
-  [6,0,0,0,9,5,0,0,0],   // (2,4)=1 becomes 0
+  [6,0,0,0,9,5,0,0,0],
   [0,9,8,0,0,0,0,6,0],
   [8,0,0,0,6,0,0,0,3],
-  [4,0,0,8,0,3,0,0,0],   // (5,9)=1 becomes 0
-  [7,0,0,0,0,0,0,0,6],   // (6,5)=2 becomes 0
-  [0,6,0,0,0,0,0,0,0],   // (7,7)=2 & (7,8)=8 become 0
-  [0,0,0,4,0,0,0,0,5],   // (8,5)=1, (8,6)=9 become 0
-  [0,0,0,0,8,0,0,7,0],   // (9,9)=9 becomes 0
+  [4,0,0,8,0,3,0,0,0],
+  [7,0,0,0,0,0,0,0,6],
+  [0,6,0,0,0,0,0,0,0],
+  [0,0,0,4,0,0,0,0,5],
+  [0,0,0,0,8,0,0,7,0],
 ];
 
 const solution = [
@@ -449,18 +494,20 @@ const solution = [
   [3,4,5,2,8,6,1,7,9],
 ];
 
-/* Mapping of digits from date to cell positions (0-based) */
 const introMappings = [
-  { char: '2', row: 5, col: 4 }, // (6,5)
-  { char: '2', row: 6, col: 6 }, // (7,7)
-  { char: '1', row: 1, col: 3 }, // (2,4)
-  { char: '1', row: 4, col: 8 }, // (5,9)
-  { char: '1', row: 7, col: 4 }, // (8,5)
-  { char: '9', row: 7, col: 5 }, // (8,6)
-  { char: '9', row: 8, col: 8 }, // (9,9)
-  { char: '8', row: 6, col: 7 }, // (7,8)
+  { char: '2', row: 5, col: 4 },
+  { char: '2', row: 6, col: 6 },
+  { char: '1', row: 1, col: 3 },
+  { char: '1', row: 4, col: 8 },
+  { char: '1', row: 7, col: 4 },
+  { char: '9', row: 7, col: 5 },
+  { char: '9', row: 8, col: 8 },
+  { char: '8', row: 6, col: 7 },
 ];
 
+/* -------------------------
+   RENDER SUDOKU
+-------------------------- */
 const sudoku = document.getElementById("sudoku");
 let selectedCell = null;
 let gameStarted = false;
@@ -519,7 +566,6 @@ function renderSudoku() {
         cell.dataset.value = "";
       }
 
-      // 3x3 block borders
       if (c % 3 === 0) cell.classList.add("block-left");
       if (c === 8)     cell.classList.add("block-right");
       if (r % 3 === 0) cell.classList.add("block-top");
@@ -528,13 +574,13 @@ function renderSudoku() {
       cell.appendChild(valueDiv);
       cell.appendChild(notesDiv);
 
-      cell.addEventListener("click", () => {
+      cell.onclick = () => {
         if (!gameStarted) return;
         if (cell.classList.contains("fixed")) return;
         if (selectedCell) selectedCell.style.outline = "none";
         selectedCell = cell;
         cell.style.outline = "2px solid #b30000";
-      });
+      };
 
       sudoku.appendChild(cell);
     }
@@ -544,9 +590,11 @@ function renderSudoku() {
 renderSudoku();
 
 /* -------------------------
-   NUMBER PAD
+   NUMBER INPUT
 -------------------------- */
 const numberPad = document.getElementById("numberPad");
+const notesMode = document.getElementById("notesMode");
+
 for (let n = 1; n <= 9; n++) {
   const btn = document.createElement("button");
   btn.className = "numBtn";
@@ -560,8 +608,6 @@ del.textContent = "⌫";
 del.onclick = () => handleInput(0);
 numberPad.appendChild(del);
 
-const notesMode = document.getElementById("notesMode");
-
 function handleInput(value) {
   if (!gameStarted) return;
   if (!selectedCell || selectedCell.classList.contains("fixed")) return;
@@ -569,24 +615,20 @@ function handleInput(value) {
   const valueDiv = selectedCell.querySelector(".cell-value");
 
   if (notesMode.checked) {
-    // Notes mode
     if (!selectedCell.notes) selectedCell.notes = new Set();
 
-    if (value === 0) {
-      selectedCell.notes.clear();
-    } else {
+    if (value === 0) selectedCell.notes.clear();
+    else {
       if (selectedCell.notes.has(value)) selectedCell.notes.delete(value);
       else selectedCell.notes.add(value);
     }
 
-    // In notes mode, clear main value
     selectedCell.dataset.value = "";
     valueDiv.textContent = "";
     selectedCell.classList.add("note");
     updateNotesVisual(selectedCell);
 
   } else {
-    // Normal number entry
     selectedCell.classList.remove("note");
     clearNotes(selectedCell);
 
@@ -605,10 +647,8 @@ function handleInput(value) {
 
 /* -------------------------
    FEHLER HERVORHEBEN
-   tap once = red for 1s
 -------------------------- */
 const mistakeBtn = document.getElementById("mistakeBtn");
-let mistakeTimeout = null;
 
 function showMistakes() {
   const cells = document.querySelectorAll(".cell");
@@ -630,22 +670,33 @@ function clearMistakes() {
   });
 }
 
-mistakeBtn.addEventListener("click", () => {
+mistakeBtn.onclick = () => {
   if (!gameStarted) return;
-  if (mistakeTimeout) {
-    clearTimeout(mistakeTimeout);
-    clearMistakes();
-    mistakeTimeout = null;
-  }
+  clearMistakes();
   showMistakes();
-  mistakeTimeout = setTimeout(() => {
-    clearMistakes();
-    mistakeTimeout = null;
-  }, 1000);
-});
+  setTimeout(clearMistakes, 1000);
+};
 
 /* -------------------------
-   WIN DETECTION
+   CONFETTI (NEW)
+-------------------------- */
+function launchConfetti() {
+  const colors = ["#ff4d4d", "#ffcc00", "#33cc33", "#3399ff", "#ff66cc"];
+
+  for (let i = 0; i < 80; i++) {
+    const conf = document.createElement("div");
+    conf.className = "confetti";
+    conf.style.left = Math.random() * 100 + "vw";
+    conf.style.background = colors[Math.floor(Math.random() * colors.length)];
+    conf.style.animationDelay = (Math.random() * 0.4) + "s";
+    document.body.appendChild(conf);
+
+    setTimeout(() => conf.remove(), 2200);
+  }
+}
+
+/* -------------------------
+   WIN LOGIC
 -------------------------- */
 function checkWin() {
   const cells = document.querySelectorAll(".cell");
@@ -661,25 +712,39 @@ function checkWin() {
 }
 
 function onWin() {
+
+  // original fade-up message under Sudoku
   const msg = document.getElementById("winMessage");
   msg.style.display = "block";
   setTimeout(() => {
     msg.style.opacity = "1";
     msg.style.transform = "translateY(0)";
   }, 20);
+
+  // NEW overlay
+  const overlay = document.getElementById("winOverlay");
+  overlay.style.pointerEvents = "auto";
+  overlay.style.opacity = "1";
+
+  // Confetti
+  launchConfetti();
+
+  // Hide overlay after confetti finishes
+  setTimeout(() => {
+    overlay.style.opacity = "0";
+    overlay.style.pointerEvents = "none";
+  }, 2100);
 }
 
 /* -------------------------
-   INTRO ANIMATION
+   INTRO ANIMATION (unchanged)
 -------------------------- */
-startBtn.addEventListener("click", () => {
-  // prevent double start
+startBtn.onclick = () => {
   startBtn.disabled = true;
 
   const cells = document.querySelectorAll(".cell");
   const particles = [];
 
-  // create spark particles that fly into the target cells
   introMappings.forEach((map, idx) => {
     const digitSpan = introDigits[idx];
     if (!digitSpan) return;
@@ -701,61 +766,48 @@ startBtn.addEventListener("click", () => {
     const targetLeft = cellRect.left + cellRect.width / 2;
     const targetTop  = cellRect.top + cellRect.height / 2;
 
-    const flightDelay = idx * 80;
+    const delay = idx * 80;
 
     setTimeout(() => {
       particle.style.left = targetLeft + "px";
       particle.style.top  = targetTop + "px";
-    }, flightDelay);
+    }, delay);
 
-    particles.push({ particle, map, delay: flightDelay });
+    particles.push({ particle, map, delay });
   });
 
-  // Fade out overlay while particles fly
   introOverlay.style.transition = "opacity 0.9s ease";
   introOverlay.style.opacity = "0";
 
-  const baseTime = 900;
-  const maxDelay = particles.length
-    ? particles.reduce((max, p) => Math.max(max, p.delay), 0)
-    : 0;
+  const maxDelay = particles.reduce((m, p) => Math.max(m, p.delay), 0);
 
-  // After the particles have arrived, reveal the digits with a stagger + glow
   setTimeout(() => {
-    const currentCells = document.querySelectorAll(".cell");
+    const cells = document.querySelectorAll(".cell");
+
     particles.forEach(({ particle, map }, idx) => {
-      const cell = currentCells[map.row * 9 + map.col];
+      const cell = cells[map.row * 9 + map.col];
       const valueDiv = cell.querySelector(".cell-value");
-      const revealDelay = idx * 80;
 
       setTimeout(() => {
         cell.dataset.value = map.char;
         valueDiv.textContent = map.char;
         cell.classList.add("fixed", "cell-intro-glow");
 
-        // fade out particle
         particle.style.opacity = "0";
 
-        // remove glow class after animation
-        setTimeout(() => {
-          cell.classList.remove("cell-intro-glow");
-        }, 700);
-      }, revealDelay);
+        setTimeout(() => cell.classList.remove("cell-intro-glow"), 700);
+
+      }, idx * 80);
     });
 
-    // remove particles after they faded out
     setTimeout(() => {
-      particles.forEach(({ particle }) => {
-        if (particle.parentNode) {
-          particle.parentNode.removeChild(particle);
-        }
-      });
+      particles.forEach(({ particle }) => particle.remove());
     }, particles.length * 80 + 800);
 
     introOverlay.style.display = "none";
     gameStarted = true;
-  }, maxDelay + baseTime);
-});
+  }, maxDelay + 900);
+};
 </script>
 
 </body>
