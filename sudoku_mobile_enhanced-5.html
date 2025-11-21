@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku – Weihnachten</title>
+
+  <!-- Festive Calligraphy Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+  <style>
+    /* === KEEPING YOUR ORIGINAL BACKGROUND AND THEME === */
+    body {
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding-top: 20px;
+      background: linear-gradient(#f8f8f8, #d8e3f0);
+      background-image:
+      url('data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Ctext x="10" y="55" font-size="20" fill="%23e0e0e0"%3E✻%3C/text%3E%3C/svg%3E'),
+      url('data:image/svg+xml,%3Csvg width="120" height="120" xmlns="http://www.w3.org/2000/svg"%3E%3Ctext x="15" y="65" font-size="22" fill="%23f2d4d4"%3E✦%3C/text%3E%3C/svg%3E');
+      background-repeat: repeat;
+      overflow-x: hidden;
+    }
+
+    h1, h2 {
+      font-family: 'Great Vibes', cursive;
+      color: #b30000;
+      text-shadow: 0 0 4px rgba(255,255,255,0.7);
+      margin: 0;
+    }
+
+    h1 { font-size: 3rem; }
+    h2 { font-size: 2rem; }
+
+    .snowflake {
+      position: fixed;
+      top: -10px;
+      color: white;
+      font-size: 20px;
+      opacity: 0.75;
+      animation: fall linear infinite;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    @keyframes fall { to { transform: translateY(110vh); } }
+
+    #frame {
+      padding: 15px;
+      border: 8px solid #b30000;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.65);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      margin-top: 25px;
+    }
+
+    #sudoku {
+      display: grid;
+      grid-template-columns: repeat(9, 40px);
+      grid-template-rows: repeat(9, 40px);
+      gap: 2px;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border: 1px solid #ddd;
+      text-align: center;
+      font-size: 20px;
+      border-radius: 6px;
+    }
+
+    .cell:focus {
+      outline: 2px solid #b30000;
+      background: #fff5f5;
+    }
+
+    .block-left  { border-left: 3px solid #b30000; }
+    .block-right { border-right: 3px solid #b30000; }
+    .block-top   { border-top: 3px solid #b30000; }
+    .block-bottom{ border-bottom: 3px solid #b30000; }
+
+    #checkBtn {
+      margin-top: 18px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #b30000;
+      color: white;
+      cursor: pointer;
+      font-size: 17px;
+    }
+
+    #numberPad {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(5, 40px);
+      grid-auto-rows: 40px;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .numBtn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: none;
+      background: #fff;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    #notesToggle {
+      margin-top: 12px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #555;
+    }
+
+    #winMessage {
+      margin-top: 18px;
+      background: rgba(255,255,255,0.94);
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 17px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.25);
+      opacity: 0;
+      display: none;
+      text-align: center;
+      max-width: 92vw;
+      transform: translateY(18px);
+      transition: all 0.8s ease;
+    }
+
+    #winMessage h2 {
+      font-family: 'Great Vibes', cursive;
+      font-size: 2.3rem;
+      margin: 0;
+      background: linear-gradient(45deg, #b30000, #d4af37, #008000);
+      -webkit-background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 7px rgba(255,255,255,0.7);
+    }
+
+    #confettiCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 999999;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<h1>Felice Adventskalender</h1>
+<h2>Türchen 1 🎄🎁</h2>
+
+<div id="frame">
+  <div id="sudoku"></div>
+
+  <div id="notesToggle">
+    <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
+  </div>
+
+  <div id="numberPad"></div>
+
+  <button id="checkBtn">Lösung prüfen</button>
+</div>
+
+<div id="winMessage">
+  <h2>Geschafft!</h2>
+  <p>Sei gespannt auf das nächste Türchen! 🎄✨</p>
+</div>
+
+<script>
+/* Snowflakes */
+for (let i = 0; i < 20; i++) {
+  const f = document.createElement('div');
+  f.className = 'snowflake';
+  f.textContent = '❅';
+  f.style.left = Math.random() * 100 + 'vw';
+  f.style.animationDuration = 5 + Math.random() * 5 + 's';
+  f.style.animationDelay = Math.random() * 5 + 's';
+  document.body.appendChild(f);
+}
+
+const sudokuEl = document.getElementById("sudoku");
+let selectedCell = null;
+
+const puzzle = [
+  [5,3,0, 0,7,0, 0,0,0],
+  [6,0,0, 1,9,5, 0,0,0],
+  [0,9,8, 0,0,0, 0,6,0],
+
+  [8,0,0, 0,6,0, 0,0,3],
+  [4,0,0, 8,0,3, 0,0,1],
+  [7,0,0, 0,2,0, 0,0,6],
+
+  [0,6,0, 0,0,0, 2,8,0],
+  [0,0,0, 4,1,9, 0,0,5],
+  [0,0,0, 0,8,0, 0,7,9],
+];
+
+function renderSudoku() {
+  sudokuEl.innerHTML = "";
+
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const inp = document.createElement("input");
+      inp.maxLength = 3;
+      inp.classList.add("cell");
+      inp.dataset.row = r;
+      inp.dataset.col = c;
+
+      if (c % 3 === 0) inp.classList.add("block-left");
+      if (c === 8)     inp.classList.add("block-right");
+      if (r % 3 === 0) inp.classList.add("block-top");
+      if (r === 8)     inp.classList.add("block-bottom");
+
+      if (puzzle[r][c] !== 0) {
+        inp.value = puzzle[r][c];
+        inp.style.background = "#f7eaea";
+        inp.classList.add("fixed");
+        inp.disabled = true;
+      }
+
+      inp.addEventListener("click", () => {
+        if (inp.classList.contains("fixed")) return;
+        if (selectedCell) selectedCell.style.outline = "none";
+        selectedCell = inp;
+        inp.style.outline = "2px solid #b30000";
+      });
+
+      sudokuEl.appendChild(inp);
+    }
+  }
+}
+renderSudoku();
+
+const numberPad = document.getElementById("numberPad");
+
+function renderNumberPad() {
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.createElement("button");
+    btn.className = "numBtn";
+    btn.textContent = n;
+    btn.onclick = () => handleInput(n);
+    numberPad.appendChild(btn);
+  }
+
+  const del = document.createElement("button");
+  del.className = "numBtn";
+  del.textContent = "⌫";
+  del.onclick = () => handleInput(0);
+  numberPad.appendChild(del);
+}
+renderNumberPad();
+
+const notesCheckbox = document.getElementById("notesMode");
+
+function handleInput(value) {
+  if (!selectedCell || selectedCell.classList.contains("fixed")) return;
+
+  if (notesCheckbox.checked) {
+    if (!selectedCell.notes) selectedCell.notes = new Set();
+
+    if (value === 0) {
+      selectedCell.notes.clear();
+    } else {
+      if (selectedCell.notes.has(value)) selectedCell.notes.delete(value);
+      else selectedCell.notes.add(value);
+    }
+
+    selectedCell.classList.add("note");
+    selectedCell.value = [...selectedCell.notes].sort().join(" ");
+
+  } else {
+    selectedCell.classList.remove("note");
+    selectedCell.notes = null;
+    selectedCell.value = value === 0 ? "" : value;
+  }
+}
+
+document.getElementById("checkBtn").onclick = () => {
+  const cells = Array.from(document.querySelectorAll(".cell"));
+  const grid = [];
+
+  for (let r = 0; r < 9; r++) {
+    grid[r] = [];
+    for (let c = 0; c < 9; c++) {
+      const cell = cells[r * 9 + c];
+      const val = Number(cell.value) || 0;
+      grid[r][c] = val;
+    }
+  }
+
+  if (isSolved(grid)) onWin();
+  else alert("Leider falsch – versuch’s nochmal!");
+};
+
+function isSolved(g) {
+  const ok = arr => new Set(arr).size === 9 && !arr.includes(0);
+
+  for (let i = 0; i < 9; i++) {
+    if (!ok(g[i])) return false;
+    if (!ok(g.map(r => r[i]))) return false;
+  }
+
+  for (let br = 0; br < 3; br++) {
+    for (let bc = 0; bc < 3; bc++) {
+      const block = [];
+      for (let r = br*3; r < br*3+3; r++)
+        for (let c = bc*3; c < bc*3+3; c++)
+          block.push(g[r][c]);
+      if (!ok(block)) return false;
+    }
+  }
+
+  return true;
+}
+
+const canvas = document.getElementById("confettiCanvas");
+const ctx = canvas.getContext("2d");
+let pieces = [];
+let active = false;
+
+function startConfetti() {
+  active = true;
+  canvas.style.display = "block";
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  pieces = [];
+  const colors = ["#b30000", "#d4af37", "#ffffff", "#008000"];
+
+  for (let i = 0; i < 200; i++) {
+    pieces.push({
+      x: Math.random()*canvas.width,
+      y: -20,
+      size: Math.random()*8+4,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      speed: Math.random()*3+1,
+    });
+  }
+
+  requestAnimationFrame(update);
+  setTimeout(() => { canvas.style.display = "none"; active = false; }, 2200);
+}
+
+function update() {
+  if (!active) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  pieces.forEach(p => {
+    p.y += p.speed;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x,p.y,p.size,p.size);
+  });
+
+  requestAnimationFrame(update);
+}
+
+function onWin() {
+  startConfetti();
+
+  const msg = document.getElementById("winMessage");
+  msg.style.display = "block";
+  setTimeout(() => {
+    msg.style.opacity = "1";
+    msg.style.transform = "translateY(0)";
+  }, 20);
+}
+</script>
+
+</body>
+</html>
+
