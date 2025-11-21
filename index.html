@@ -18,6 +18,10 @@
       --border-base: 3px;
       --font-base: 20px;
       --btn-font-base: 17px;
+
+      --frame-width: calc(var(--frame-base) * var(--scale));
+      --cell-size: calc(var(--cell-base) * var(--scale));
+      --border-thick: calc(var(--border-base) * var(--scale));
     }
 
     @media (max-width: 480px) {
@@ -80,9 +84,7 @@
        FRAME (RED BORDER BOX)
     -------------------------- */
     #frame {
-      width: min(var(--frame-base), 92vw);
-      transform: scale(var(--scale));
-      transform-origin: top center;
+      width: min(var(--frame-width), 92vw);
 
       border: calc(8px * var(--scale)) solid #b30000;
       border-radius: calc(20px * var(--scale));
@@ -96,21 +98,17 @@
 
       display: flex;
       flex-direction: column;
-      align-items: center; /* center sudoku, buttons, etc */
+      align-items: center; /* center sudoku & controls */
     }
 
     /* -------------------------
        SUDOKU GRID
     -------------------------- */
     #sudoku {
-      --cell-size: calc(var(--cell-base) * var(--scale));
-      --border-thick: calc(var(--border-base) * var(--scale));
-
       display: grid;
       grid-template-columns: repeat(9, var(--cell-size));
       grid-template-rows: repeat(9, var(--cell-size));
       gap: 0 !important; /* cells touch */
-
       margin: 0 auto;
     }
 
@@ -194,15 +192,15 @@
     #numberPad {
       margin-top: 15px;
       display: grid;
-      grid-template-columns: repeat(5, calc(var(--cell-base) * var(--scale)));
-      grid-auto-rows: calc(var(--cell-base) * var(--scale));
+      grid-template-columns: repeat(5, var(--cell-size));
+      grid-auto-rows: var(--cell-size);
       justify-content: center;
       gap: 8px;
     }
 
     .numBtn {
-      width: calc(var(--cell-base) * var(--scale));
-      height: calc(var(--cell-base) * var(--scale));
+      width: var(--cell-size);
+      height: var(--cell-size);
       border-radius: 8px;
       border: none;
       background: #fff;
@@ -270,7 +268,7 @@
 
 <body>
 
-<h1>Feloke Adventskalender</h1>
+<h1>Felice Adventskalender</h1>
 <h2>Türchen 2 🎄🎁</h2>
 
 <div id="frame">
@@ -472,7 +470,7 @@ function handleInput(value) {
 
 /* -------------------------
    FEHLER HERVORHEBEN
-   (works on mobile & desktop)
+   (mobile + desktop)
 -------------------------- */
 const mistakeBtn = document.getElementById("mistakeBtn");
 
@@ -507,9 +505,11 @@ mistakeBtn.addEventListener("mouseup", clearMistakes);
 mistakeBtn.addEventListener("mouseleave", clearMistakes);
 
 // Mobile
-mistakeBtn.addEventListener("touchstart", () => {
+mistakeBtn.addEventListener("touchstart", (e) => {
+  // Ensure we trigger even if browser also sends click
   showMistakes();
 }, { passive: true });
+
 mistakeBtn.addEventListener("touchend", clearMistakes);
 mistakeBtn.addEventListener("touchcancel", clearMistakes);
 
