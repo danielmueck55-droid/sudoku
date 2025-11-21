@@ -8,7 +8,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 
   <style>
-
     /* -------------------------
        GLOBAL SCALE VARIABLES
     -------------------------- */
@@ -58,6 +57,26 @@
     h2 { font-size: 2rem; }
 
     /* -------------------------
+       SNOWFLAKES
+    -------------------------- */
+    .snowflake {
+      position: fixed;
+      top: -10px;
+      color: white;
+      font-size: 20px;
+      opacity: 0.75;
+      animation: fall linear infinite;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(110vh);
+      }
+    }
+
+    /* -------------------------
        FRAME (RED BORDER BOX)
     -------------------------- */
     #frame {
@@ -74,6 +93,10 @@
       box-sizing: border-box;
 
       margin-top: 25px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center; /* center sudoku, buttons, etc */
     }
 
     /* -------------------------
@@ -86,7 +109,8 @@
       display: grid;
       grid-template-columns: repeat(9, var(--cell-size));
       grid-template-rows: repeat(9, var(--cell-size));
-      gap: 0 !important; /* CELLS TOUCH */
+      gap: 0 !important; /* cells touch */
+
       margin: 0 auto;
     }
 
@@ -96,15 +120,16 @@
 
       background: white;
       border: 1px solid #ddd;
-      text-align: center;
-      font-size: calc(var(--font-base) * var(--scale));
-      border-radius: 4px !important;  /* REDUCED ROUNDING */
+      border-radius: 2px !important;  /* reduced rounding */
       box-sizing: border-box;
 
-      caret-color: transparent;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
       cursor: pointer;
       user-select: none;
-      readonly: readonly; /* DISABLE KEYBOARD */
     }
 
     .cell:focus {
@@ -112,27 +137,53 @@
       background: #fff5f5;
     }
 
-    /* thick block borders */
     .block-left  { border-left: var(--border-thick) solid #b30000 !important; }
     .block-right { border-right: var(--border-thick) solid #b30000 !important; }
     .block-top   { border-top: var(--border-thick) solid #b30000 !important; }
     .block-bottom{ border-bottom: var(--border-thick) solid #b30000 !important; }
+
+    .cell-value {
+      position: relative;
+      z-index: 2;
+      font-size: calc(var(--font-base) * var(--scale));
+      color: black;
+    }
+
+    /* 3x3 mini note grid */
+    .cell-notes {
+      position: absolute;
+      inset: 2px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      font-size: calc(var(--font-base) * var(--scale) * 0.4);
+      line-height: 1;
+      color: #555;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .note-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
 
     /* -------------------------
        FIXED CELLS (GIVEN NUMBERS)
     -------------------------- */
     .fixed {
       background: #f7eaea !important;
-      font-weight: normal !important; /* REMOVE BOLD */
+      font-weight: normal !important; /* no bold */
     }
 
-    /* DARKER FOR MOBILE */
     @media (max-width: 600px) {
       .fixed {
-        background: #e9c8c8 !important;
+        background: #e9c8c8 !important; /* a bit darker on mobile */
         font-weight: normal !important;
       }
-      .cell {
+      .cell-value {
         color: #222 !important;
       }
     }
@@ -168,11 +219,11 @@
       margin-top: 12px;
       font-size: 16px;
       cursor: pointer;
+      text-align: center;
     }
 
     .note {
-      font-size: 12px;
-      color: #555;
+      /* marker class; visual handled by note grid */
     }
 
     #mistakeBtn {
@@ -219,8 +270,8 @@
 
 <body>
 
-<h1>Felice Adventskalender</h1>
-<h2>Türchen 2 🎄🎁</h2>
+<h1>Feloke Adventskalender</h1>
+<h2>Türchen 1 🎄🎁</h2>
 
 <div id="frame">
   <div id="sudoku"></div>
@@ -240,12 +291,22 @@
 </div>
 
 <script>
-
-/* Disable mobile keyboard */
-function preventKeyboard(el) {
-  el.setAttribute("readonly", "readonly");
+/* -------------------------
+   SNOWFALL
+-------------------------- */
+for (let i = 0; i < 20; i++) {
+  const f = document.createElement('div');
+  f.className = 'snowflake';
+  f.textContent = '❅';
+  f.style.left = Math.random() * 100 + 'vw';
+  f.style.animationDuration = 5 + Math.random() * 5 + 's';
+  f.style.animationDelay = Math.random() * 5 + 's';
+  document.body.appendChild(f);
 }
 
+/* -------------------------
+   PUZZLE + SOLUTION
+-------------------------- */
 const puzzle = [
   [5,3,0,0,7,0,0,0,0],
   [6,0,0,1,9,5,0,0,0],
@@ -273,46 +334,87 @@ const solution = [
 const sudoku = document.getElementById("sudoku");
 let selectedCell = null;
 
+function createNoteGrid() {
+  const notesDiv = document.createElement("div");
+  notesDiv.className = "cell-notes";
+  for (let n = 1; n <= 9; n++) {
+    const span = document.createElement("span");
+    span.className = "note-slot";
+    span.dataset.num = String(n);
+    span.textContent = n;
+    notesDiv.appendChild(span);
+  }
+  return notesDiv;
+}
+
+function updateNotesVisual(cell) {
+  const notes = cell.notes || new Set();
+  const notesDiv = cell.querySelector(".cell-notes");
+  if (!notesDiv) return;
+  const slots = notesDiv.querySelectorAll(".note-slot");
+  slots.forEach(slot => {
+    const n = Number(slot.dataset.num);
+    slot.style.opacity = notes.has(n) ? "1" : "0";
+  });
+}
+
+function clearNotes(cell) {
+  cell.notes = new Set();
+  updateNotesVisual(cell);
+}
+
 function renderSudoku() {
   sudoku.innerHTML = "";
 
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
 
-      const inp = document.createElement("input");
-      inp.classList.add("cell");
-      preventKeyboard(inp);
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.row = r;
+      cell.dataset.col = c;
+      cell.notes = new Set();
 
-      inp.dataset.row = r;
-      inp.dataset.col = c;
+      const valueDiv = document.createElement("div");
+      valueDiv.className = "cell-value";
 
-      if (c % 3 === 0) inp.classList.add("block-left");
-      if (c === 8)     inp.classList.add("block-right");
-      if (r % 3 === 0) inp.classList.add("block-top");
-      if (r === 8)     inp.classList.add("block-bottom");
+      const notesDiv = createNoteGrid();
 
       if (puzzle[r][c] !== 0) {
-        inp.value = puzzle[r][c];
-        inp.classList.add("fixed");
-        inp.disabled = true;
+        cell.classList.add("fixed");
+        cell.dataset.value = puzzle[r][c];
+        valueDiv.textContent = puzzle[r][c];
+      } else {
+        cell.dataset.value = "";
       }
 
-      inp.addEventListener("click", () => {
-        if (inp.classList.contains("fixed")) return;
+      // 3x3 block borders
+      if (c % 3 === 0) cell.classList.add("block-left");
+      if (c === 8)     cell.classList.add("block-right");
+      if (r % 3 === 0) cell.classList.add("block-top");
+      if (r === 8)     cell.classList.add("block-bottom");
+
+      cell.appendChild(valueDiv);
+      cell.appendChild(notesDiv);
+
+      cell.addEventListener("click", () => {
+        if (cell.classList.contains("fixed")) return;
         if (selectedCell) selectedCell.style.outline = "none";
-        selectedCell = inp;
-        inp.style.outline = "2px solid #b30000";
+        selectedCell = cell;
+        cell.style.outline = "2px solid #b30000";
       });
 
-      sudoku.appendChild(inp);
+      sudoku.appendChild(cell);
     }
   }
 }
+
 renderSudoku();
 
-/* Number pad */
+/* -------------------------
+   NUMBER PAD
+-------------------------- */
 const numberPad = document.getElementById("numberPad");
-
 for (let n = 1; n <= 9; n++) {
   const btn = document.createElement("button");
   btn.className = "numBtn";
@@ -320,7 +422,6 @@ for (let n = 1; n <= 9; n++) {
   btn.onclick = () => handleInput(n);
   numberPad.appendChild(btn);
 }
-
 const del = document.createElement("button");
 del.className = "numBtn";
 del.textContent = "⌫";
@@ -332,26 +433,47 @@ const notesMode = document.getElementById("notesMode");
 function handleInput(value) {
   if (!selectedCell || selectedCell.classList.contains("fixed")) return;
 
+  const valueDiv = selectedCell.querySelector(".cell-value");
+
   if (notesMode.checked) {
+    // Notes mode
     if (!selectedCell.notes) selectedCell.notes = new Set();
-    if (value === 0) selectedCell.notes.clear();
-    else {
+
+    if (value === 0) {
+      selectedCell.notes.clear();
+    } else {
       if (selectedCell.notes.has(value)) selectedCell.notes.delete(value);
       else selectedCell.notes.add(value);
     }
+
+    // In notes mode, clear main value
+    selectedCell.dataset.value = "";
+    valueDiv.textContent = "";
     selectedCell.classList.add("note");
-    selectedCell.value = [...selectedCell.notes].sort().join(" ");
+    updateNotesVisual(selectedCell);
+
   } else {
+    // Normal number entry
     selectedCell.classList.remove("note");
-    selectedCell.notes = null;
-    selectedCell.value = value === 0 ? "" : value;
-    selectedCell.style.color = "black";
+    clearNotes(selectedCell);
+
+    if (value === 0) {
+      selectedCell.dataset.value = "";
+      valueDiv.textContent = "";
+    } else {
+      selectedCell.dataset.value = String(value);
+      valueDiv.textContent = value;
+    }
+    valueDiv.style.color = "black";
   }
 
   checkWin();
 }
 
-/* Press & hold mistakes */
+/* -------------------------
+   FEHLER HERVORHEBEN
+   (works on mobile & desktop)
+-------------------------- */
 const mistakeBtn = document.getElementById("mistakeBtn");
 
 function showMistakes() {
@@ -360,8 +482,11 @@ function showMistakes() {
     if (cell.classList.contains("fixed") || cell.classList.contains("note")) return;
     const r = Math.floor(i / 9);
     const c = i % 9;
-    if (cell.value && Number(cell.value) !== solution[r][c]) {
-      cell.style.color = "red";
+    const val = cell.dataset.value;
+    const valueDiv = cell.querySelector(".cell-value");
+
+    if (val && Number(val) !== solution[r][c]) {
+      valueDiv.style.color = "red";
     }
   });
 }
@@ -369,25 +494,35 @@ function showMistakes() {
 function clearMistakes() {
   const cells = document.querySelectorAll(".cell");
   cells.forEach(cell => {
-    if (!cell.classList.contains("fixed") && !cell.classList.contains("note"))
-      cell.style.color = "black";
+    if (!cell.classList.contains("fixed") && !cell.classList.contains("note")) {
+      const valueDiv = cell.querySelector(".cell-value");
+      valueDiv.style.color = "black";
+    }
   });
 }
 
+// Desktop
 mistakeBtn.addEventListener("mousedown", showMistakes);
 mistakeBtn.addEventListener("mouseup", clearMistakes);
 mistakeBtn.addEventListener("mouseleave", clearMistakes);
-mistakeBtn.addEventListener("touchstart", e => { e.preventDefault(); showMistakes(); });
+
+// Mobile
+mistakeBtn.addEventListener("touchstart", () => {
+  showMistakes();
+}, { passive: true });
 mistakeBtn.addEventListener("touchend", clearMistakes);
 mistakeBtn.addEventListener("touchcancel", clearMistakes);
 
-/* Win detection */
+/* -------------------------
+   WIN DETECTION
+-------------------------- */
 function checkWin() {
   const cells = document.querySelectorAll(".cell");
 
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
-      const val = cells[r*9 + c].value;
+      const cell = cells[r * 9 + c];
+      const val = cell.dataset.value;
       if (Number(val) !== solution[r][c]) return;
     }
   }
@@ -402,7 +537,6 @@ function onWin() {
     msg.style.transform = "translateY(0)";
   }, 20);
 }
-
 </script>
 
 </body>
