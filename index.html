@@ -77,6 +77,50 @@
     }
 
     /* -------------------------
+       INTRO OVERLAY
+    -------------------------- */
+    #introOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    #introContent {
+      background: rgba(0,0,0,0.8);
+      padding: 24px 32px;
+      border-radius: 18px;
+      text-align: center;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      max-width: 90vw;
+    }
+
+    #introDate {
+      font-size: 2.4rem;
+      letter-spacing: 0.12em;
+      margin-bottom: 16px;
+    }
+
+    #introDate span {
+      display: inline-block;
+    }
+
+    #startBtn {
+      margin-top: 8px;
+      padding: 10px 24px;
+      border-radius: 999px;
+      border: none;
+      background: #b30000;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    /* -------------------------
        FRAME (RED BORDER BOX)
     -------------------------- */
     #frame {
@@ -210,7 +254,7 @@
       font-size: calc(var(--font-base) * var(--scale));
       cursor: pointer;
       box-sizing: border-box;
-	color: #0a7a0a !important;  /* Christmassy green */
+      color: #0a7a0a !important; /* Christmassy green */
     }
 
     /* -------------------------
@@ -273,6 +317,14 @@
 <h1>Felice Adventskalender</h1>
 <h2>Türchen 2 🎄🎁</h2>
 
+<!-- INTRO OVERLAY -->
+<div id="introOverlay">
+  <div id="introContent">
+    <div id="introDate"></div>
+    <button id="startBtn">Start</button>
+  </div>
+</div>
+
 <div id="frame">
   <div id="sudoku"></div>
 
@@ -305,18 +357,40 @@ for (let i = 0; i < 20; i++) {
 }
 
 /* -------------------------
+   INTRO DATE SETUP
+-------------------------- */
+const introDateEl = document.getElementById("introDate");
+const startBtn = document.getElementById("startBtn");
+const introOverlay = document.getElementById("introOverlay");
+const dateStr = "22.11.1998";
+
+const introDigits = []; // only digit spans, in order
+for (const ch of dateStr) {
+  const span = document.createElement("span");
+  if (/\d/.test(ch)) {
+    span.className = "introDigit";
+    introDigits.push(span);
+  } else {
+    span.className = "introDot";
+  }
+  span.textContent = ch;
+  introDateEl.appendChild(span);
+}
+
+/* -------------------------
    PUZZLE + SOLUTION
+   (with intro cells initially empty)
 -------------------------- */
 const puzzle = [
   [5,3,0,0,7,0,0,0,0],
-  [6,0,0,1,9,5,0,0,0],
+  [6,0,0,0,9,5,0,0,0],   // (2,4)=1 becomes 0
   [0,9,8,0,0,0,0,6,0],
   [8,0,0,0,6,0,0,0,3],
-  [4,0,0,8,0,3,0,0,1],
-  [7,0,0,0,2,0,0,0,6],
-  [0,6,0,0,0,0,2,8,0],
-  [0,0,0,4,1,9,0,0,5],
-  [0,0,0,0,8,0,0,7,9],
+  [4,0,0,8,0,3,0,0,0],   // (5,9)=1 becomes 0
+  [7,0,0,0,0,0,0,0,6],   // (6,5)=2 becomes 0
+  [0,6,0,0,0,0,0,0,0],   // (7,7)=2 & (7,8)=8 become 0
+  [0,0,0,4,0,0,0,0,5],   // (8,5)=1, (8,6)=9 become 0
+  [0,0,0,0,8,0,0,7,0],   // (9,9)=9 becomes 0
 ];
 
 const solution = [
@@ -331,8 +405,21 @@ const solution = [
   [3,4,5,2,8,6,1,7,9],
 ];
 
+/* Mapping of digits from date to cell positions (0-based) */
+const introMappings = [
+  { char: '2', row: 5, col: 4 }, // (6,5)
+  { char: '2', row: 6, col: 6 }, // (7,7)
+  { char: '1', row: 1, col: 3 }, // (2,4)
+  { char: '1', row: 4, col: 8 }, // (5,9)
+  { char: '1', row: 7, col: 4 }, // (8,5)
+  { char: '9', row: 7, col: 5 }, // (8,6)
+  { char: '9', row: 8, col: 8 }, // (9,9)
+  { char: '8', row: 6, col: 7 }, // (7,8)
+];
+
 const sudoku = document.getElementById("sudoku");
 let selectedCell = null;
+let gameStarted = false;
 
 function createNoteGrid() {
   const notesDiv = document.createElement("div");
@@ -398,6 +485,7 @@ function renderSudoku() {
       cell.appendChild(notesDiv);
 
       cell.addEventListener("click", () => {
+        if (!gameStarted) return;
         if (cell.classList.contains("fixed")) return;
         if (selectedCell) selectedCell.style.outline = "none";
         selectedCell = cell;
@@ -431,6 +519,7 @@ numberPad.appendChild(del);
 const notesMode = document.getElementById("notesMode");
 
 function handleInput(value) {
+  if (!gameStarted) return;
   if (!selectedCell || selectedCell.classList.contains("fixed")) return;
 
   const valueDiv = selectedCell.querySelector(".cell-value");
@@ -502,9 +591,8 @@ function clearMistakes() {
   });
 }
 
-/* NEW: one-tap, 1-second highlight (works on mobile & desktop) */
 mistakeBtn.addEventListener("click", () => {
-  // If already running, reset
+  if (!gameStarted) return;
   if (mistakeTimeout) {
     clearTimeout(mistakeTimeout);
     clearMistakes();
@@ -541,6 +629,64 @@ function onWin() {
     msg.style.transform = "translateY(0)";
   }, 20);
 }
+
+/* -------------------------
+   INTRO ANIMATION
+-------------------------- */
+startBtn.addEventListener("click", () => {
+  // prevent double start
+  startBtn.disabled = true;
+
+  const cells = document.querySelectorAll(".cell");
+  const clones = [];
+
+  introMappings.forEach((map, idx) => {
+    const digitSpan = introDigits[idx];
+    if (!digitSpan) return;
+
+    const rect = digitSpan.getBoundingClientRect();
+    const clone = digitSpan.cloneNode(true);
+    clone.style.position = "fixed";
+    clone.style.left = rect.left + "px";
+    clone.style.top = rect.top + "px";
+    clone.style.zIndex = "3000";
+    clone.style.transition = "left 0.9s ease, top 0.9s ease, opacity 0.9s ease";
+    document.body.appendChild(clone);
+    digitSpan.style.opacity = "0";
+
+    const cell = cells[map.row * 9 + map.col];
+    const cellRect = cell.getBoundingClientRect();
+    const targetLeft = cellRect.left + cellRect.width/2 - rect.width/2;
+    const targetTop  = cellRect.top + cellRect.height/2 - rect.height/2;
+
+    requestAnimationFrame(() => {
+      clone.style.left = targetLeft + "px";
+      clone.style.top  = targetTop + "px";
+    });
+
+    clones.push({ clone, map });
+  });
+
+  // Fade out overlay while digits fly
+  introOverlay.style.transition = "opacity 0.9s ease";
+  introOverlay.style.opacity = "0";
+
+  setTimeout(() => {
+    // Apply digits as fixed cells
+    const cells = document.querySelectorAll(".cell");
+    clones.forEach(({ clone, map }) => {
+      const cell = cells[map.row * 9 + map.col];
+      const valueDiv = cell.querySelector(".cell-value");
+      cell.dataset.value = map.char;
+      valueDiv.textContent = map.char;
+      cell.classList.add("fixed");
+      document.body.removeChild(clone);
+    });
+
+    introOverlay.style.display = "none";
+    gameStarted = true;
+  }, 950);
+});
 </script>
 
 </body>
