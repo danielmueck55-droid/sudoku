@@ -23,6 +23,14 @@
       overflow-x: hidden;
     }
 
+    /* 🎯 NEW: Perfect scaling wrapper */
+    #scaleWrapper {
+      transform-origin: top center;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
     h1, h2 {
       font-family: 'Great Vibes', cursive;
       color: #b30000;
@@ -30,8 +38,8 @@
       margin: 0;
     }
 
-    h1 { font-size: clamp(2.2rem, 6vw, 3rem); }
-    h2 { font-size: clamp(1.7rem, 5vw, 2rem); }
+    h1 { font-size: 3rem; }
+    h2 { font-size: 2rem; }
 
     .snowflake {
       position: fixed;
@@ -53,29 +61,24 @@
       box-shadow: 0 0 15px rgba(0,0,0,0.2);
       margin-top: 25px;
 
-      width: 92vw;
-      max-width: 400px;
+      /* Desktop width preserved */
+      width: 430px;
     }
 
-    /* Responsive Sudoku Grid */
     #sudoku {
       display: grid;
-      width: 90vw;
-      max-width: 360px;
-      aspect-ratio: 1;
-      grid-template-columns: repeat(9, 1fr);
-      grid-template-rows: repeat(9, 1fr);
+      grid-template-columns: repeat(9, 40px);
+      grid-template-rows: repeat(9, 40px);
       gap: 2px;
-      margin: auto;
     }
 
     .cell {
-      width: 100%;
-      height: 100%;
+      width: 40px;
+      height: 40px;
       background: white;
       border: 1px solid #ddd;
       text-align: center;
-      font-size: clamp(16px, 5vw, 22px);
+      font-size: 20px;
       border-radius: 6px;
 
       caret-color: transparent;
@@ -101,34 +104,32 @@
       background: #b30000;
       color: white;
       cursor: pointer;
-      font-size: clamp(14px, 4vw, 17px);
+      font-size: 17px;
     }
 
-    /* Responsive Number Pad */
     #numberPad {
       margin-top: 15px;
-      width: 90vw;
-      max-width: 260px;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      grid-auto-rows: 1fr;
+      grid-template-columns: repeat(5, 40px);
+      grid-auto-rows: 40px;
+      justify-content: center;
       gap: 8px;
     }
 
     .numBtn {
-      width: 100%;
-      aspect-ratio: 1;
+      width: 40px;
+      height: 40px;
       border-radius: 8px;
       border: none;
       background: #fff;
       box-shadow: 0 0 5px rgba(0,0,0,0.2);
-      font-size: clamp(16px, 6vw, 22px);
+      font-size: 20px;
       cursor: pointer;
     }
 
     #notesToggle {
       margin-top: 12px;
-      font-size: clamp(14px, 4vw, 16px);
+      font-size: 16px;
       cursor: pointer;
     }
 
@@ -154,7 +155,7 @@
 
     #winMessage h2 {
       font-family: 'Great Vibes', cursive;
-      font-size: clamp(1.8rem, 7vw, 2.3rem);
+      font-size: 2.3rem;
       margin: 0;
       background: linear-gradient(45deg, #b30000, #d4af37, #008000);
       -webkit-background-clip: text;
@@ -177,19 +178,21 @@
 
 <canvas id="confettiCanvas"></canvas>
 
-<h1>Felice Adventskalender</h1>
+<h1>Feloke Adventskalender</h1>
 <h2>Türchen 1 🎄🎁</h2>
 
-<div id="frame">
-  <div id="sudoku"></div>
+<div id="scaleWrapper">
+  <div id="frame">
+    <div id="sudoku"></div>
 
-  <div id="notesToggle">
-    <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
+    <div id="notesToggle">
+      <label><input type="checkbox" id="notesMode"> Notizen-Modus</label>
+    </div>
+
+    <div id="numberPad"></div>
+
+    <button id="mistakeBtn">Fehler hervorheben</button>
   </div>
-
-  <div id="numberPad"></div>
-
-  <button id="mistakeBtn">Fehler hervorheben</button>
 </div>
 
 <div id="winMessage">
@@ -211,6 +214,21 @@ for (let i = 0; i < 20; i++) {
 
 const sudokuEl = document.getElementById("sudoku");
 let selectedCell = null;
+
+/* Perfect scaling for all mobile screens */
+function scaleToFit() {
+  const designWidth = 430; // your original frame width
+  const available = window.innerWidth;
+
+  let scale = available / designWidth;
+
+  if (scale > 1) scale = 1; // prevent upscaling on desktop
+
+  document.getElementById("scaleWrapper").style.transform = 
+    `scale(${scale})`;
+}
+scaleToFit();
+window.addEventListener("resize", scaleToFit);
 
 /* ORIGINAL PUZZLE */
 const puzzle = [
@@ -322,7 +340,6 @@ function handleInput(value) {
     selectedCell.style.color = "black";
   }
 
-  /* AUTO WIN CHECK */
   const cells = Array.from(document.querySelectorAll(".cell"));
   const grid = [];
 
@@ -338,26 +355,53 @@ function handleInput(value) {
   if (isSolved(grid)) onWin();
 }
 
-/* Fehler hervorheben */
-document.getElementById("mistakeBtn").onclick = () => {
+/* ------- NEW MISTAKE BUTTON (press & hold) -------- */
+const mistakeBtn = document.getElementById("mistakeBtn");
+
+function highlightMistakes() {
   const cells = document.querySelectorAll(".cell");
 
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       const cell = cells[r * 9 + c];
+
+      if (cell.classList.contains("fixed")) continue;
+      if (cell.classList.contains("note")) continue;
+
       const correct = puzzleSolution[r][c];
       const value = Number(cell.value);
 
-      if (!cell.classList.contains("fixed")) {
-        if (value !== 0 && value !== correct) {
-          cell.style.color = "red";
-        } else {
-          cell.style.color = "black";
-        }
+      if (value !== 0 && value !== correct) {
+        cell.style.color = "red";
+      } else {
+        cell.style.color = "black";
       }
     }
   }
-};
+}
+
+function clearMistakeHighlight() {
+  const cells = document.querySelectorAll(".cell");
+
+  cells.forEach(cell => {
+    if (!cell.classList.contains("fixed") && !cell.classList.contains("note")) {
+      cell.style.color = "black";
+    }
+  });
+}
+
+mistakeBtn.addEventListener("mousedown", highlightMistakes);
+mistakeBtn.addEventListener("mouseup", clearMistakeHighlight);
+mistakeBtn.addEventListener("mouseleave", clearMistakeHighlight);
+
+mistakeBtn.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  highlightMistakes();
+});
+mistakeBtn.addEventListener("touchend", clearMistakeHighlight);
+mistakeBtn.addEventListener("touchcancel", clearMistakeHighlight);
+
+/* -------------------------------------------- */
 
 function isSolved(g) {
   const ok = arr => new Set(arr).size === 9 && !arr.includes(0);
